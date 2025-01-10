@@ -13,6 +13,20 @@
         this.parent = parent;
       }
     }
+
+    class Branch {
+      /**
+       * Branch class
+       * Represents a branch.
+       *
+       * @param {string} name Branch name.
+       * @param {Commit} commit Commit object.
+       */
+      constructor(name, commit) {
+        this.name = name;
+        this.commit = commit;
+      }
+    }
   
     class Git {
       /**
@@ -26,7 +40,10 @@
         this.lastCommitId = -1;
         this.commits = []; // add array to store commits
         this.history = []; // add array to store history
-        this.HEAD = null; // add HEAD pointer - it will be updated every time we make a commit
+        this.branches = []; // add array to store branches
+        let master = new Branch("master", null);
+        this.branches.push(master);
+        this.HEAD = master; // add HEAD pointer - it will be updated every time we make a commit
       }
   
       /**
@@ -35,8 +52,8 @@
        * @return {Commit}        Created commit object.
        */
       commit(message) {
-        const commit = new Commit(++this.lastCommitId, this.HEAD, message);
-        this.HEAD = commit; // update HEAD pointer
+        const commit = new Commit(++this.lastCommitId, this.HEAD.commit, message);
+        this.HEAD.commit = commit; // update HEAD pointer
         this.commits.push(commit);
         this.history.push(commit); // add commit to history
         return commit;
@@ -47,7 +64,7 @@
        * @return {Array} Commit log.
        */
       log() {
-        let commit = this.HEAD;
+        let commit = this.HEAD.commit;
         this.history = []; // clear history
         while (commit) {
           this.history.push(commit);
@@ -63,6 +80,30 @@
       getCommit(id) {
         return this.history.find(commit => commit.id === id);
       }
+
+      checkout(branchName) {
+        for(let i = 0; i < this.branches.length; i++) {
+          if(this.branches[i].name === branchName) {
+            // found the branch
+            console.log("switching to branch " + branchName);;
+            this.HEAD = this.branches[i];
+            return this.HEAD;
+          }
+        }
+        // if branch not exist, create new branch
+        let branch = new Branch(branchName, this.HEAD.commit);
+        this.branches.push(branch);
+        this.HEAD = branch;
+        console.log("Switched to new branch " + branchName);
+        return branch;
+      }
+
+      historyToIdMapper(history) {
+        let ids = history.map((commit) => {
+            return commit.id;
+        });
+        return ids.join('-');
+      }
     }
   
     const repo = new Git('my-repo');
@@ -70,10 +111,15 @@
     console.log(repo.commit('second commit'));
     console.log(repo.commit('third commit'));
     let log = repo.log();
+    
+    // console.assert(historyToIdMapper(repo.log()) === "1-0");
     console.assert(log.length === 2);
-    // console.assert(!!log[0] && log[0].id === 1);
-    // console.assert(!!log[1] && log[1].id === 0);
+    console.assert(repo.HEAD.name === "master"); // Should be on master branch.
+    repo.checkout("testing");
+    console.assert(repo.HEAD.name === "testing"); // Should be on new testing branch.
+    repo.checkout("master");
+    console.assert(repo.HEAD.name === "master"); // Should be on master branch.
+    repo.checkout("testing");
     console.log(repo.getHistory());
     globalThis.Git = Git;
   })();
-  
